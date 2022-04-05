@@ -1,0 +1,6 @@
+# [Market]   [Url]
+Nyse,https://www.reuters.com/finance/markets/mostActives?symbol=&index=4
+Amex,https://www.reuters.com/finance/markets/mostActives?symbol=&index=9
+Nasdaq,https://www.reuters.com/finance/markets/mostActives?symbol=&index=14
+NasdaqPost,https://www.reuters.com/finance/markets/mostActives?symbol=&index=14
+Ftse,https://www.reuters.com/finance/markets/mostActives?symbol=&index=19
