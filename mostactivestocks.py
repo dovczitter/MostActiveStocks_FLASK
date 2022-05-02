@@ -1,4 +1,6 @@
 import requests
+#from flask import request
+import cloudscraper
 import pandas as pd
 import subprocess as sp
 import json
@@ -15,9 +17,11 @@ class MostActiveStocks:
         pass
 
     marketList = []
-    version='4.00'
+    version='4.10'
     hostName=''
     serverPort=0
+    marketYahooMostActives='YahooMostActives'
+    marketInvestingMostActives='InvestingMostActives'
 
     #
     # ================ classmethods ================
@@ -71,13 +75,12 @@ class MostActiveStocks:
         navStr += '<strong><nav class="center">'
         navStr += '<ul class=center id="menu">'
         navStr += f'<li><a href="{homePath}">HOME</a></li>'
-        for item in MostActiveStocks.marketList:
-            if item[0][0] != '#':
-                name = item[0].strip()
-                url = f'{basePath}{name}'
-                navStr += f'<li><a href="{url}">| {name}</a></li>'
-        navStr += f'<li><a href="https://www.reuters.com/finance/markets/mostActives">| ReutersMostActives</a></li>'
-        navStr += f'<li><a href="https://www.investing.com">| Investing.com</a></li>'
+        name = MostActiveStocks.marketYahooMostActives
+        url = f'{basePath}{name}'
+        navStr += f'<li><a href="{url}">| {name}</a></li>'
+        name = MostActiveStocks.marketInvestingMostActives
+        url = f'{basePath}{name}'
+        navStr += f'<li><a href="{url}">| {name}</a></li>'
         navStr += '</ul>'
         navStr += '</nav></strong>'
         # 
@@ -107,19 +110,12 @@ class MostActiveStocks:
         date_time = datetime.now().strftime("%d%b%Y:%H:%M:%S")
         infoStr = '<ul style="text-align:left; font-family: verdana,arial,sans-serif; font-size: 15px; ">\n'
         infoStr += '<br>\n'
-        infoStr += '<li><b>Links</b> : `Nyse | Amex | Nasdaq | NasdaqPost | Ftse` query Reuters for the `Most Active Companies` info.</li>\n'
-        infoStr += '<li><b>ReutersMostActives</b> to view data source, note the mid page `INDEX` list.</li>\n'
-        infoStr += '<li style="padding-left:2em">NYSE Most Actives -> HOME, Nyse default</li>\n'
-        infoStr += '<li style="padding-left:2em">AMEX Most Actives -> Amex</li>\n'
-        infoStr += '<li style="padding-left:2em">NASDAQ Most Actives -> both Nasdaq and NasdaqPost</li>\n'
-        infoStr += '<li style="padding-left:2em">FTSE Most Actives -> Ftse</li>\n'
-        infoStr += '<li><b>For more Reuters data</b>, use ReutersMostActives, then INDEX to `Price Gainers (%)`,`Price Losers (%)`,`Dollar Gainers`, `Dollar Losers` </li>\n'
+#       infoStr += f'<li><b>Links</b> : {MostActiveStocks.marketName} query "Yahoo Finance" info.</li>\n'
+        infoStr += f'<li><b>Links</b> : {MostActiveStocks.marketYahooMostActives} query "Yahoo Finance" info.</li>\n'
         infoStr += '<li><b>Investing.com</b> to view other most active USA and international stocks. See <b>Markets->Stocks->Most Active</b></li>\n'
         infoStr += '<li>Each <b>Symbol element</b> links to its "Yahoo Finance" site providing complete symbol data, browser back arrow gets back to here.</li>\n'
         infoStr += '<li>Note lower lefthand browser window shows the url.</li>\n'
-        infoStr += '<li><b>Nasdaq and NasdaqPost</b> both result in the same table data, NasdaqPost links to the native Nasdaq site for more direct info, again back arrow to return here. </li>\n'
         infoStr += '<li><b>SYMBOL</b> textbox provides any symbol query to "Yahoo Finance".</li>'
-        infoStr += '<li>[Extensions may not be vaild on "Yahoo Finance"] Example, Nyse base symbol JCP.N enter `JCP`, include the `.L` extension for London, ie `LLOY.L` </li>\n'
         infoStr += f'<li>[Version: {self.version}] [{date_time}]</li>\n'
         infoStr += '</ul>\n'
         
@@ -139,19 +135,26 @@ class MostActiveStocks:
         if data.get('serverPort'):
             self.serverPort=data['serverPort']
         return
-
     # ------------------------------------------------------------------------
-    #                       marketListInit
+    #                       getInvestingSymbol
     # ------------------------------------------------------------------------
     @classmethod
-    def marketListInit(self):
-        self.marketList = []
-        with open('webserver.csv', 'r') as f:
-            self.marketList = list(csv.reader(f))
-        return
+    def getInvestingSymbol(self, name, html):
+        symbol = name
+        startPos = -1
+        endPos = -1
+        endPos = html.find(f"'>{name}</a><span class")
+        if endPos > 0:
+            begStr = "href='/equities/" 
+            startPos = html.rindex(begStr, 0, endPos)
+            if startPos >= 0:
+                startPos = startPos + len(begStr)
+        if startPos >= 0 and endPos >= 0:
+            symbol = html[startPos:endPos].strip()
+        return symbol
 
     #
-    # ================ staticmethods ================
+    # ================ static methods ================
     #
 
     # ------------------------------------------------------------------------
@@ -184,19 +187,24 @@ class MostActiveStocks:
     #                       getJson
     # ------------------------------------------------------------------------
     @staticmethod
-    def getJson(url, market):
+    def getJson(market, url):
 
         htmlTitle = ''
         date_time = datetime.now().strftime("%d%b%Y:%H:%M:%S")
-
-        reqStr = requests.get(url).text
+        file_time = datetime.now().strftime("%d%b%Y%H%M%S")
+        # Fix cloudflare error:
+        # https://stackoverflow.com/questions/60802468/python-requests-problem-cloudflare-error-message-enable-cookies
+        # https://pypi.org/project/cloudscraper/
+        scraper = cloudscraper.create_scraper(browser={'browser': 'firefox','platform': 'windows','mobile': False})
+        reqStr = scraper.get(url).text
+#        with open(f'mostactivestocks_{file_time}.html', 'w') as f:
+#            f.write(reqStr)
         #
         # Find the htmlTitle 
         #
         startPos = reqStr.find('<title>')
         endPos = reqStr.find('</title>')
         if startPos >= 0 and endPos >= 0:
-            htmlTitle = market.upper()+' : '
             htmlTitle += reqStr[startPos+len('<title>'):endPos].strip()
         try:
             df_list = pd.read_html(reqStr, flavor='html5lib')
@@ -208,34 +216,45 @@ class MostActiveStocks:
 
         jsonResult = df.to_json(orient="values")
         jsonParsed = json.loads(jsonResult)
-
         #
         # table data 
         #
         tableData = ''
         symbol = ''
 
-        tableData = '<tr><th>_Symbol_</th><th>Company</th><th>Time</th><th>Last</th><th>Chg</th><th>Chg %</th><th>Volume</th></tr>\n'
-        for item in jsonParsed:
-            tableData += '<tr>'
-            yahooPath = ''
-            for val in item:
-                if item.index(val) == 0:
-                    symbol = str(val)
-                    if "." in symbol and market != 'ftse':
-                        symbol = symbol[:symbol.find(".")]
-                    #
-                    # Add yahoo finance link to row for redirection.
-                    # NasdaqPost directly to nasdaq website.
-                    #
-                    if market.lower() == 'nasdaqpost':
-                        nasdaqPath = f'https://www.nasdaq.com/market-activity/stocks/{symbol}'
-                        tableData += f'<td><a href="{nasdaqPath}">{str(val)}</a></td>\n'
-                    else:
+        if market == MostActiveStocks.marketYahooMostActives:
+            tableData = '<tr><th>_Symbol_</th><th>Name</th><th>Price</th><th>Change</th><th>% Change</th><th>Volume</th><th>3 Month AvgVol</th><th>Monthly Cap</th><th>PE Ratio(TTM)</th></tr>\n'
+            for item in jsonParsed:
+                tableData += '<tr>'
+                yahooPath = ''
+                for index, val in enumerate(item):
+                    if index > 8:
+                        break
+                    if item.index(val) == 0:
+                        symbol = str(val)
                         yahooPath = f'https://finance.yahoo.com/quote/{symbol}?p={symbol}'
                         tableData += f'<td><a href="{yahooPath}">{str(val)}</a></td>\n' 
-                else:
-                    tableData += '<td>'+str(val)+'</td>\n'
-            tableData += '</tr>\n'
-
+                    else:
+                        tableData += '<td>'+str(val)+'</td>\n'
+                tableData += '</tr>\n'
+        elif market == MostActiveStocks.marketInvestingMostActives:
+            tableData = '<tr><th>Name</th><th>Last</th><th>High</th><th>Low</th><th>Chg</th><th>Chg %</th><th>Vol</th><th>Time</th></tr>\n'
+            for item in jsonParsed:
+                tableData += '<tr>'
+                investingPath = ''
+                for index, val in enumerate(item):
+                    if index < 1:
+                        continue
+                    if index > 8:
+                        break
+                    if item.index(val) == 1:
+                        name = str(val)
+                        symbol = MostActiveStocks.getInvestingSymbol(name, reqStr)
+                        investingPath = f'https://www.investing.com/equities/{symbol}'
+                        tableData += f'<td><a href="{investingPath}">{name}</a></td>\n' 
+                    else:
+                        tableData += '<td>'+str(val)+'</td>\n'
+                tableData += '</tr>\n'
+        else:
+            tableData = '<tr><th>Invalid market</th></tr>\n'
         return htmlTitle, tableData
