@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MostActiveStocks DATA</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+</head>
+
+<style type="text/css">
+  a:hover { font-weight: bold; }
+</style>
+
+<body>
+
+  <div class="container">
+    <div class="box has-text-centered is-size-4">
+      <a href="/">{{market}}</a>
+    </div>
+  </div>
+
+  <table class="table mx-auto">
+    <thead>
+      <tr>
+        {% for header in headings %}
+        <th>{{ header }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tfoot>
+      <tr>
+        {% for header in headings %}
+        <th>{{ header }}</th>
+        {% endfor %}
+      </tr>
+    </tfoot>
+    <tbody>
+    {% for row in data %}
+      <tr>
+        {% for cell in row %}
+            {% if loop.index < loop.length %}
+
+              {% if market == 'YahooMostActives' %}
+                {% if loop.index == 1 %}
+                  {% set symbol = cell %}
+                  <td><a href={{ MostActiveStocks.getYahooHref(symbol, htmlSrc) }}>{{symbol}}</a></td> 
+                {% else %}
+                  <td>{{ cell }}</td>
+                {% endif %}
+
+              {% else %}
+                {% if loop.index > 1 %}
+                  {% if loop.index == 2 %}
+                    {% set symbol = cell %}
+                    <td><a href={{ MostActiveStocks.getInvestingHref(symbol, htmlSrc) }}>{{symbol}}</a></td> 
+                  {% else %}
+                    <td>{{ cell }}</td>
+                  {% endif %}
+                {% endif %}
+
+              {% endif %}
+            {% endif %}
+        {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
