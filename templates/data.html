@@ -7,7 +7,23 @@
   <!--meta http-equiv="refresh" content="5" /-->
   <title>MostActiveStocks DATA</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
-</head>
+
+  <!-- jQuery -->
+  <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
+  <!-- DataTables JS -->
+  <script src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
+
+  <script type="text/javascript">
+    $(document).ready( function () {
+      $('#datatable').DataTable({
+        "orderData": [ 0,1,2,3,4,5,6,7,8,9,10 ]
+      });  
+    });
+  </script>
+
+ </head>
 
 <style type="text/css">
   a:hover { font-weight: bold; }
@@ -25,64 +41,24 @@
       <a href="/">{{market}} [{{dtNY}}]</a>
     </div>
   </div>
-  <div>
-    <table class="mx-auto is-bordered is-size-3">
+  <div class="table-container">
+    <table id="datatable" class="mx-auto is-bordered is-size-3">
       <thead>
-        <tr>
-          {% for header in headings %}
-
-            {% if market == 'YahooMostActives' %}
-              {% if loop.index > 2 %}
-                <th td class="has-text-right">{{ header }}</th>
-              {% else %}
-                <th>{{ header }}</th>
-              {% endif %}
-            {% endif %}
-
-            {% if market == 'InvestingMostActives' %}
-              {% if loop.index > 1 %}
-                <th td class="has-text-right">{{ header }}</th>
-              {% else %}
-                <th>{{ header }}</th>
-              {% endif %}
-            {% endif %}
-
-            {% if market == 'BankOfChina' %}
-              {% if loop.index > 2 %}
-                <th td class="has-text-right">{{ header }}</th>
-              {% else %}
-                <th>{{ header }}</th>
-              {% endif %}
-            {% endif %}
-
-          {% endfor %}
-        </tr>
+        {% for header in headings %}
+          <th td class="has-text-left">[ {{ header }} ]</th>
+        {% endfor %}
       </thead>
       <tfoot>
-        <tr>
-          {% for header in headings %}
-            {% if market in ['YahooMostActives','BankOfChina'] %}
-              {% if loop.index > 2 %}
-                <th td class="has-text-right">{{ header }}</th>
-              {% else %}
-                <th>{{ header }}</th>
-              {% endif %}
-            {% elif market == 'InvestingMostActives' %}
-              {% if loop.index > 1 %}
-                <th td class="has-text-right">{{ header }}</th>
-              {% else %}
-                <th>{{ header }}</th>
-              {% endif %}
-            {% endif %}
-          {% endfor %}
-        </tr>
+        {% for header in headings %}
+          <th td class="has-text-left">[ {{ header }} ]</th>
+        {% endfor %}
       </tfoot>
       <tbody>
-      {% for row in data %}
+        {% for row in data %}
         <tr>
           {% for cell in row %}
-
-              {% if (market == 'YahooMostActives') and (loop.index < loop.length) %}
+  
+              {% if (market == 'YahooMostActives') and (loop.index <= headings|length) %}
                 {% if loop.index == 1 %}
                   {% set symbol = cell %}
                   <td><a href={{ MostActiveStocks.getYahooHref(symbol, htmlSrc) }}>{{symbol}}</a></td> 
@@ -93,43 +69,29 @@
                 {% endif %}
               {% endif %}
 
-              {% if market == 'InvestingMostActives' %}
-                {% if loop.index > 1 %}
-                  {% if loop.index == 2 %}
-                    {% set symbol = cell %}
-                    <td><a href={{ MostActiveStocks.getInvestingHref(symbol, htmlSrc) }}>{{symbol}}</a></td> 
-                  {% else %}
-                    <td class="has-text-right">{{ cell }}</td>
-                  {% endif %}
+              {% if (market == 'InvestingMostActives') and (loop.index > 1) and (loop.index <= headings|length+1) %}
+                {% if loop.index == 2 %}
+                  {% set symbol = cell %}
+                  <td><a href={{ MostActiveStocks.getInvestingHref(symbol, htmlSrc) }}>{{symbol}}</a></td> 
+                {% else %}
+                  <td class="has-text-right">{{ cell }}</td>
                 {% endif %}
               {% endif %}
 
               {% if market == 'BankOfChina' %}
-                <td class="has-text-right">{{ cell }}</td>
+                {% if loop.index == 1 %}
+                  <td class="has-text-left">{{ cell }}</td>
+                {% else %}
+                  <td class="has-text-right">{{ cell }}</td>
+                {% endif %}
               {% endif %}
 
           {% endfor %}
         </tr>
-      {% endfor %}
+        {% endfor %}
       </tbody>
     </table>
   </div>
   
-  <!-- jQuery -->
-  <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
-  <!-- DataTables CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
-  <!-- DataTables JS -->
-  <script src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
-  <script>
-    $('.table').DataTable({
-      paging: false,
-      "language": {
-            "decimal": ",",
-            "thousands": "."
-        },
-    })
-  </script>
-
 </body>
 </html>
