@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEST - TEST - TEST</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+</head>
+
+<body>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Items</th>
+                <th scope="col">Expenditure</th>
+            </tr>
+        </thead>
+        <tbody id="items">
+            <tr>
+                <th scope="row">Donuts</th>
+                <td>3,009</td>
+            </tr>
+            <tr>
+                <th scope="row">Stationery</th>
+                <td>18,001</td>
+            </tr>
+        </tbody>
+    </table>
+    <!--button>
+        Click Me!
+    </button-->
+    <script>
+        //    const $ = css => document.querySelector(css);
+        
+            // Will replace the HTML, use += to add to existing innerHTML, or outerHTML to replace the entire tag.
+        //    $(’tbody’).innerHTML = `       
+        //    $(’tbody’).innerHTML += `       
+        //    $(’tbody’).outerHTML = `       
+        //            <tr>
+        //                <th scope="row”>Coffee</th>
+        //                <td>50,000,000</td>
+         //           </tr>`
+    //      document.querySelector("items").outerHTML = '<tr><th scope="row”>Coffee</th><td>50,000,000</td></tr>';
+//    document.querySelector("#items").innerHTML = '<tr><th scope="row”>Coffee</th><td>50,000,000</td></tr>';
+//  document.querySelector("#items").innerHTML += '<tbody><tr><th scope="row”>Coffee</th><td>50,000,000</td></tr></tbody>';
+    document.querySelector("#items").innerHTML += '<tr><th>Coffee</th><td>50,000,000</td></tr>';
+    </script>
+</body>
+
+</html>

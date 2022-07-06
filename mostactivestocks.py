@@ -1,10 +1,12 @@
 import pandas as pd
-import json
+import xmltodict, json
+import xml.etree.ElementTree as ETree
 import requests
 import os
+from enum import Enum, auto
 from bs4 import BeautifulSoup
-#from io import StringIO
-#import sys
+import html
+#import  jinja2
 
 # Local Ubuntu
 import cloudscraper
@@ -12,16 +14,17 @@ import cloudscraper
 class MostActiveStocks:
 
     def __init__(self):
-        print('MostActiveStocks init')
+#        print('MostActiveStocks init')
         pass
 
     version='6.10'
     hostName=''
     serverPort=0
-    YahooMostActivesName='YahooMostActives'
-    InvestingMostActivesName='InvestingMostActives'
-    BankOfChinaForexName='BankOfChina'
-      
+    headerLength=0
+
+    MostActivesNameYahoo = 'YahooMostActives'
+    MostActivesNameInvesting = 'InvestingMostActives'
+
     #
     # ================ classmethods ================
     #
@@ -89,16 +92,22 @@ class MostActiveStocks:
             scraper = cloudscraper.create_scraper(browser={'browser': 'firefox','platform': 'windows','mobile': False})
             htmlSrc = scraper.get(url).text
 
-            df_list = pd.read_html(htmlSrc, flavor='html5lib')
-            df = df_list[0]
-            df.head()
+            if '<?xml version=' in htmlSrc:
+                xmlSrc = requests.get(url).text
+                jsonResult = json.dumps(xmlSrc)
+                jsonParsed = json.loads( jsonResult )
+                data = jsonParsed
+            else:
+                df_list = pd.read_html(htmlSrc, flavor='html5lib')
+                df = df_list[0]
+                df.head()
+                jsonResult = df.to_json(orient="values")
+                jsonParsed = json.loads(jsonResult)
+#                print(jsonParsed)
+                data = jsonParsed
         except Exception as e:
             return e, data
 
-        jsonResult = df.to_json(orient="values")
-        jsonParsed = json.loads(jsonResult)
-        data = jsonParsed
-#        print(f'getData data: {data}')      
         return htmlSrc, data
 
     # ------------------------------------------------------------------------
@@ -110,14 +119,14 @@ class MostActiveStocks:
         htmlSrc = ''
         data = ''
         foundTag = False
-        dfLen = len(pd.read_html(url))
-        for i in range(dfLen):
-            df = pd.read_html(url)[i]
+        tables = pd.read_html(url)
+        tables_len = len(tables)
+        for i in range(tables_len):
+            df = tables[i]
             jsonResult = df.to_json(orient="values")
             jsonParsed = json.loads(jsonResult)
             if foundTag:
                 data = jsonParsed
-#                print(f'parse_url data: {data}')
                 break
             tstr = str(df)
             if tstr.find(headerTag) != -1: 
@@ -136,18 +145,16 @@ class MostActiveStocks:
         mas_dict = {}
         fx_dict = {}
 
-        # https://www.youtube.com/watch?v=mII5mrU46rs
-        # https://stackoverflow.com/questions/6740918/creating-a-dictionary-from-a-csv-file
-        try:
-            fn = f'{os.getcwd()}/MostActiveStocks.csv'
-            mas_dict = pd.read_csv(fn).to_dict('records')
+        if market != '':
+            try:
+                fn = f'{os.getcwd()}/MostActiveStocks.csv'
+                mas_dict = pd.read_csv(fn).to_dict('records')
 
-            fn = f'{os.getcwd()}/ForeignExchangeRates.csv'
-            fx_dict = pd.read_csv(fn).to_dict('records')
-        except Exception as e:
-            return f'csv file read error: {e}'
+                fn = f'{os.getcwd()}/ForeignExchangeRates.csv'
+                fx_dict = pd.read_csv(fn).to_dict('records')
+            except Exception as e:
+                return f'csv file read error: {e}'
 
-        if (market in [MostActiveStocks.YahooMostActivesName, MostActiveStocks.InvestingMostActivesName] ):
             for row in mas_dict:
                 if row['Name'] == market:
                     for index, (key, value) in enumerate(row.items()):
@@ -155,45 +162,117 @@ class MostActiveStocks:
                             if not pd.isnull(value):
                                 headings.append(value)
                     break
-        else:
-            for row in fx_dict:
-                if row['Name'] == market:
-                    for index, (key, value) in enumerate(row.items()):
-                        if (index > 1):
-                            if not pd.isnull(value):
-                                headings.append(value)
-                    break
-
+            if len(headings) == 0:
+                for row in fx_dict:
+                    if row['Name'] == market:
+                        for index, (key, value) in enumerate(row.items()):
+                            if (index > 1):
+                                if not pd.isnull(value):
+                                    headings.append(value)
+                        break
+                    
+        MostActiveStocks.headerLength = len(headings)
         return headings
-    
-     # ------------------------------------------------------------------------
+  
+    # ------------------------------------------------------------------------
+    #                       getHrefs
+    # ------------------------------------------------------------------------
+    @staticmethod
+    def getHrefs(url):
+
+        MostActiveStocksHrefs = {}
+        CurrencyHrefs = {}
+        mas_dict = {}
+        cur_dict = {}
+
+        try:
+            fn = f'{os.getcwd()}/MostActiveStocks.csv'
+            df = pd.read_csv(fn)
+            mas_dict = df.to_dict('records')
+
+            fn = f'{os.getcwd()}/ForeignExchangeRates.csv'
+            df = pd.read_csv(fn)
+            cur_dict = df.to_dict('records')
+        except Exception as e:
+            return f'csv file read error: {e}'
+
+        for row in mas_dict:
+            name = row['Name']
+            if name[0] != '#':
+                MostActiveStocksHrefs[name] = f'{url}/mostactivestocks?market={name}'
+
+        for row in cur_dict:
+            name = row['Name']
+            if name[0] != '#':
+                CurrencyHrefs[name] = f'{url}/mostactivestocks?market={name}'
+
+        return MostActiveStocksHrefs,CurrencyHrefs
+
+    # ------------------------------------------------------------------------
+    #                       getTableHead
+    # ------------------------------------------------------------------------
+    @staticmethod
+    def getTableHead(market):
+
+        tableHead = '<tr>'
+        headings = MostActiveStocks.getHeading(market)
+        for index,header in enumerate(headings):
+            tableHead += f'<th>{ header }</th>'
+        tableHead += '</tr>'
+        
+        return tableHead
+
+    # ------------------------------------------------------------------------
+    #                       getMostActiveUrl
+    # ------------------------------------------------------------------------
+    @staticmethod
+    def getMostActiveUrl(market):
+
+        url = ''
+        mas_dict = {}
+
+        try:
+            fn = f'{os.getcwd()}/MostActiveStocks.csv'
+            mas_dict = pd.read_csv(fn).to_dict('records')
+        except Exception as e:
+            return f'csv file read error: {e}'
+
+        for row in mas_dict:
+            if row['Name'] == market:
+                url = row['Url']
+                break
+
+        return url
+
+    # ------------------------------------------------------------------------
+    #                       getCurrencyUrl
+    # ------------------------------------------------------------------------
+    @staticmethod
+    def getCurrencyUrl(market):
+
+        url = ''
+        cur_dict = {}
+
+        try:
+            fn = f'{os.getcwd()}/ForeignExchangeRates.csv'
+            cur_dict = pd.read_csv(fn).to_dict('records')
+        except Exception as e:
+            return f'csv file read error: {e}'
+
+        for row in cur_dict:
+            if row['Name'] == market:
+                url = row['Url']
+                break
+
+        return url
+
+    # ------------------------------------------------------------------------
     #                       getUrl
     # ------------------------------------------------------------------------
     @staticmethod
     def getUrl(market):
 
-        url = ''
-        mas_dict = {}
-        fx_dict = {}
-
-        try:
-            fn = f'{os.getcwd()}/MostActiveStocks.csv'
-            mas_dict = pd.read_csv(fn).to_dict('records')
-
-            fn = f'{os.getcwd()}/ForeignExchangeRates.csv'
-            fx_dict = pd.read_csv(fn).to_dict('records')
-        except Exception as e:
-            return f'csv file read error: {e}'
-
-        if (market in [MostActiveStocks.YahooMostActivesName, MostActiveStocks.InvestingMostActivesName] ):
-            for row in mas_dict:
-                if row['Name'] == market:
-                    url = row['Url']
-                    break
-        else:
-            for row in fx_dict:
-                if row['Name'] == market:
-                    url = row['Url']
-                    break
-
+        url = MostActiveStocks.getMostActiveUrl(market)
+        if url == '':
+            url = MostActiveStocks.getCurrencyUrl(market)
         return url
